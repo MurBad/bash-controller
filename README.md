@@ -42,9 +42,9 @@ bash-controller is easy to use. After give permissions you can just run using
 ```
 
 You can also use some flags when running bash-controller. 
-`-h` shows a usage text
-`-v` shows bash-controller's version
-`-t` Needs an argument and is used to change update time inside bash-controller
+* `-h` shows a usage text
+* `-v` shows bash-controller's version
+* `-t` Needs an argument and is used to change update time inside bash-controller
 
 After start the script, you can just type `h` to have more information about the
 keys used and what you can control with bash-controller. To close the script
