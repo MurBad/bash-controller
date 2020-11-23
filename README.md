@@ -7,7 +7,7 @@ and more.
 You can also control your system using some keys of your keyboard.
 
 ## Installation
-bash-controller don't need any installation, you can simply download or clone it
+bash-controller doesn't need any installation, you can simply download or clone it
 to your machine and give it permissions. 
 This is how you can do:
 
@@ -36,7 +36,7 @@ them for the possibility your distro don't have them natively.
 After install all these dependencies bash-controller will run perfectly. 
 
 ## Usage
-bash-controller is easy to use. After give permissions you can just run using
+bash-controller is easy to use. After giving permissions you can just run using
 ```shell
 ./bash-controller
 ```
@@ -46,7 +46,7 @@ You can also use some flags when running bash-controller.
 * `-v` shows bash-controller's version
 * `-t` Needs an argument and is used to change update time inside bash-controller
 
-After start the script, you can just type `h` to have more information about the
+After starting the script, you can just type `h` to have more information about the
 keys used and what you can control with bash-controller. To close the script
 just type `q`.
 
@@ -59,7 +59,7 @@ Between them:
 * Keys used to control your system
 * Log filename
 * Time interval to update bash-controller information
-* Command used to control brightness (this variable has to be keeped in the last
+* Command used to control brightness (this variable has to be kept in the last
   line of the config file).
 
 ## License
