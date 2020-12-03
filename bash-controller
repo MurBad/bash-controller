@@ -1,0 +1,256 @@
+#!/usr/bin/env bash
+
+# bash-controller
+# A simple bash script to see better some informations
+# as brightness, volume, wireless signal and more.
+#
+# Created by: Murilo "Mur" Geraldini
+
+# Variables that don't need to be uptade when the script is running.
+VERSION=1.2
+
+# === Imports ===
+source config
+
+# === Functions ===
+help_text() {
+    #Help text shown when -h flag is passed 
+    cat <<EOF
+
+Usage: $(basename $0) [OPTIONS] [VALUE]
+A simple system controller using bash.
+
+Options:
+
+-h               Show this text and exit.
+-t    [VALUE]    Setup the update time of the data in seconds.
+                 Default is $SLEEPTIME seconds.
+-v               Prints version information.
+
+EOF
+exit 0
+}
+
+help_menu() {
+    #Function that shows a help menu when the script is running
+    while :; do
+        clear
+        cat <<EOF
+Simple help text showing all keyboard keys that can be used to 
+control somethings on PC:
+IMPORTANT: Almost all commands have to be used on the control panel
+$(basename "$0") is case sensitive
+
+Basic control:
+    <$QUIT>     Exit this menu or close the script if on the control panel
+    <$HELP>     Access this menu
+
+Brightness control:
+    <$BRIGHT_UP>     Increases brightness by $BRIGHT_INC
+    <$BRIGHT_DOWN>     Decreases brightness by $BRIGHT_DEC
+    <$BRIGHT_MANUAL>     Manual input brightness value
+            You can input values in 0-100 gap, any other input will change
+            your brightness (For example, inputting characters or negative numbers)
+
+Volume control:
+    <$VOL_UP>    Increases audio by $VOLUME_INC
+    <$VOL_DOWN>     Decreases audio by $VOLUME_DEC
+    <$VOL_MANUAL>     Manual input audio value
+    <$MUTE_TOGGLE>     Toogle mute/unmute
+
+EOF
+        read -n 1
+        case $REPLY in
+            "$QUIT") break ;;
+        esac
+    done
+}
+
+version() {
+    # Show the version of the script and exit.
+    echo "You're running $(basename $0) in version: $VERSION"
+    exit 0
+}
+
+logsystem() {
+    # Send all errors to a file
+    while read -r ERR; do
+        echo "$ERR" | sed -e "s/^/$(date) /" >> $LOG_FILE
+    done
+}
+
+depen_test() {
+    # Test if user has the necessary dependencies
+    DEPEN=0
+    for DEP in "$@"; do
+        if ! command -v "$DEP" &>/dev/null; then
+            echo "You need $DEP to run $(basename "$0")"
+            DEPEN=1
+        fi
+    done
+
+    [ "$DEPEN" -eq 1 ] && exit 0
+}
+
+volume_info() {
+    echo " ─── Volume ─────────────────────────────────────────"
+    echo -e "\t Volume:\t\t$VOLUME_STATUS% - Muted: ${MUTE_STATUS^^}"
+}
+
+brightness_info() {
+    echo " ─── Brightness ─────────────────────────────────────"
+    echo -e "\tBrightness:\t\t$BRIGHTNESS_PERCENT%"
+}
+
+wireless_info() {
+    echo " ─── Wireless ───────────────────────────────────────"
+    echo -e "\tWireless:\t\t$WIRELESS_ESSID"
+    echo -e "\tLink Quality: \t\t$WIRELESS_STRENGTH"
+    echo -e "\tSignal level: \t\t$WIRELESS_LEVEL"
+    echo 
+}
+
+brightness_up() {
+    # Increase brightness using command set in config
+    if [ "$BRIGHT_CMD" = "light" ]; then
+        light -A "$BRIGHT_INC" 2>&1 | logsystem
+    else
+        xbacklight -inc "$BRIGHT_INC" 2>&1 | logsystem
+    fi
+}
+
+brightness_down() {
+    # Decrease brightness using command set in config
+    if [ "$BRIGHT_CMD" = "light" ]; then
+        light -U "$BRIGHT_DEC" 2>&1 | logsystem
+    else
+        xbacklight -dec "$BRIGHT_DEC" 2>&1 | logsystem
+    fi
+}
+
+brightness_set() {
+    # Set brightness using command set in config
+    if [ "$BRIGHT_CMD" = "light" ]; then
+        light -S $1 2>&1 | logsystem
+    else
+        xbacklight -set $1 2>&1 | logsystem
+    fi
+}
+
+brightness_control() {
+    # Function to control brightness 
+    if [ "$REPLY" = "$BRIGHT_UP" ]; then
+        brightness_up
+    elif [ "$REPLY" = "$BRIGHT_DOWN" ]; then
+        brightness_down
+    elif [ "$REPLY" = "$BRIGHT_MANUAL" ]; then
+        echo -ne "\n\n> Enter a brightness value: "
+        read
+        brightness_set $REPLY
+    fi
+}
+
+volume_control() {
+    # Function to control volume
+    if [ "$REPLY" = "$VOL_UP" ] && [ "$VOLUME_STATUS" -lt "$VOLUME_LIMIT" ]; then
+        pactl set-sink-volume 0 "+$VOLUME_INC%" 2>&1 | logsystem
+    elif [ "$REPLY" = "$VOL_DOWN" ]; then
+        pactl set-sink-volume 0 "-$VOLUME_DEC%" 2>&1 | logsystem
+    elif [ "$REPLY" = "$VOL_MANUAL" ]; then
+        echo -ne "\n\n> Enter a volume value: "
+        read
+        pactl set-sink-volume 0 "$REPLY%" 2>&1 | logsystem
+    elif [ "$REPLY" = "$MUTE_TOGGLE" ]; then
+        pactl set-sink-mute 0 toggle 2>&1 | logsystem
+    fi
+}
+
+# === Main script ===
+# Loop to get options.
+while getopts "ht:v" OPT; do
+
+    # Working with options using case.
+    case $OPT in
+       "h") help_text         ;; 
+       "t") SLEEPTIME=$OPTARG ;;
+       "v") version           ;; 
+    esac
+done
+
+# Choosing brightness command
+if [ "$BRIGHT_CMD" != "light" ] && [ "$BRIGHT_CMD" != "xbacklight" ]; then
+    while :; do
+        clear
+        echo -e "\nWhat do you prefer as your light command?"
+        echo "[1] light"
+        echo "[2] xbacklight"
+        echo "You can change it later in config file"
+        read -p "> "
+        echo
+
+        if [ "$REPLY" -eq "1" ]; then
+            sed -i 's/BRIGHT_CMD=""/BRIGHT_CMD="light"/' config
+            break
+        elif [ "$REPLY" -eq "2" ]; then
+            sed -i 's/BRIGHT_CMD=""/BRIGHT_CMD="xbacklight"/' config
+            break
+        else
+            echo -e "\nChoose a valid option!"
+            read -n 1
+        fi
+    done
+    # Updating vars in config
+    source config 
+fi
+
+# Looking for dependencies
+depen_test "acpi" "pactl" "$BRIGHT_CMD"
+
+# Main loop.
+while :; do 
+
+    # Variables inside the while loop to be always update.
+    BATT_STATUS=$( acpi -b | sed 's/.*: \([a-zA-Z]*\),.*/\1/gi' ) 
+    BATT_CHARGE=$( acpi -b | sed 's/.*[charging|unknown], \([0-9]*\)%.*/\1/gi' )
+    BRIGHTNESS_PERCENT=$(light)
+    VOLUME_STATUS=$(pactl list sinks | grep '^[[:space:]]Volume:' | head -n $(($SINK + 1 )) | tail -n 1 | sed -e 's,.* \([0-9][0-9]*\)%.*,\1,') 
+    MUTE_STATUS=$(pacmd list-sinks | awk '/muted/ { print $2 }')
+    WIRELESS_ESSID=$([ "$(iwgetid -r)" = "" ] && printf "Disconnected" || printf "$(iwgetid -r)")
+    WIRELESS_STRENGTH=$(awk 'NR==3 {printf("%.0f%% - %d/70", $3*10/7, $3)}' /proc/net/wireless)
+    WIRELESS_LEVEL=$(awk 'NR==3 {print $4 " dBm"}' /proc/net/wireless | sed 's/\.//')
+    TOTAL_RAM=$(free --giga | awk 'NR==2 {print $2 "Gb"}')
+    USED_RAM=$(free --giga | awk 'NR==2 {print $3 "Gb"}')
+    FREE_RAM=$(free --giga | awk 'NR==2 {print $4 "Gb"}')
+    TOTAL_SWAP=$(free --giga | awk 'NR==3 {print $2 "Gb"}')
+    USED_SWAP=$(free --giga | awk 'NR==3 {print $3 "Gb"}')
+    FREE_SWAP=$(free --giga | awk 'NR==3 {print $4 "Gb"}')
+    UPTIME=$(uptime -p | sed 's/up //')
+    clear
+    
+    # Showing informations and calling mainly functions
+    echo -e "\t\tControl Panel\n"
+    echo -e "\tBattery:\t\t$BATT_CHARGE% - $BATT_STATUS"
+    echo -e "\tUptime:\t\t\t$UPTIME"
+    echo -e "\tRam Usage:\t\t$USED_RAM/$TOTAL_RAM - $FREE_RAM"
+    echo -e "\tSwap Usage:\t\t$USED_SWAP/$TOTAL_SWAP - $FREE_SWAP\n"
+    wireless_info
+    echo
+    volume_info
+    echo
+    brightness_info
+    echo -ne "\n\n\nPress <$QUIT> to exit"
+    echo -e "\tPress <$HELP> to open help menu"
+
+    # Used to get all keys tapped
+    read -n 1 -t $SLEEPTIME
+
+    # Case used to manager mainly keys 
+    case $REPLY in 
+        "$QUIT") clear; exit 0  ;;
+        "$HELP") help_menu      ;;
+    esac
+
+    # Calling all control functions
+    brightness_control
+    volume_control
+done
