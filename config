@@ -15,6 +15,9 @@ SLEEPTIME=10
 # Log file
 LOG_FILE="logfile"
 
+# Config file path (with config file name)
+CONFIG_FILE="./config"
+
 # Volume value to increment and decrement
 VOLUME_INC=1
 VOLUME_DEC=1
@@ -27,4 +30,4 @@ BRIGHT_INC=1
 BRIGHT_DEC=1
 
 # Brightness command 
-BRIGHT_CMD=""
+BRIGHT_CMD="light"
